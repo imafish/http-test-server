@@ -31,8 +31,15 @@ func main() {
 		Rules: config.Rules,
 	}
 
-	log.Printf("HTTP server listening on %s", config.Server.Addr)
-	log.Fatal(http.ListenAndServe(config.Server.Addr, handler))
+	server := config.Server
+	if server.KeyFile != "" {
+		log.Printf("HTTPs server listening on %s, key file: %s, cert file: %s", server.Addr, server.KeyFile, server.CertFile)
+		log.Fatal(http.ListenAndServeTLS(server.Addr, server.CertFile, server.KeyFile, handler))
+
+	} else {
+		log.Printf("HTTP server listening on %s", config.Server.Addr)
+		log.Fatal(http.ListenAndServe(config.Server.Addr, handler))
+	}
 }
 
 func usage() {
