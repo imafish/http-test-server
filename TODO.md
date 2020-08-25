@@ -1,4 +1,5 @@
 - support for returning a file
+- support for assigning variables and use them in responses.
 - update README
 - add tests
 - support for path param matching, e.g. /book/{id}/section{section_id}
