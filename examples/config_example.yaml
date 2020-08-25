@@ -1,0 +1,88 @@
+server:
+    addr: ":8080"
+    cert_file:
+    key_file:
+
+rules:
+    -
+        request:
+            path: "/api"
+            headers:
+                -   include: "Content-Type: application/json-rpc"
+                -   include: "Accept: application/json"
+                -   NOT: "Accept: text"
+            method: "POST"
+            body:
+                # match type can be 'loose|strict'
+                # loose: for object, rule matches if fields in value all all found in the incoming request body. strings are matched using regex.
+                # strict: for object, rule matches only if value and incoming request body are exact match. strings are matched using string equal.
+                match_rule: "loose"
+                value:
+                    jsonrpc: "2.0"
+                    id: 123
+                    method: "account_add_device"
+                    params:
+                        customer: "8de7e06e7590cf5b1eb6309cb6ce888c060d4a0217f22466b326c7e4408ff5d81b025e671d2e8e385ce54fb8849190b1"
+                        name: "my new device"
+                        type: "OTG"
+                        version: "2.0.1"
+        response:
+            headers:
+                -   "Content-Type: application/json"
+            body:
+                jsonrpc: "2.0"
+                id: 123
+                result:
+                    name: "my new device@1234567890ABCDEF"
+                    type: "OTG"
+                    device: "4e98e18e-2f32-4538-a8df-0a626e46fd7c"
+
+    -
+        request:
+            path: "/file/download"
+            method: "POST"
+            body:
+                # match type can be 'loose|strict'
+                # loose: for object, rule matches if fields in value all all found in the incoming request body. strings are matched using regex.
+                # strict: for object, rule matches only if value and incoming request body are exact match. strings are matched using string equal.
+                match_rule: "loose"
+                value:
+                    jsonrpc: "2.0"
+                    id: 123
+                    method: "account_add_device"
+                    params:
+                        customer: "8de7e06e7590cf5b1eb6309cb6ce888c060d4a0217f22466b326c7e4408ff5d81b025e671d2e8e385ce54fb8849190b1"
+                        name: "my new device"
+                        type: "OTG"
+                        version: "2.0.1"
+        response:
+            headers:
+                -   "Content-Type: stream"
+            file: "./resource/ca.cer"
+
+    -
+        request:
+            path: "/test"
+            method: "POST"
+            headers:
+                -   include: "Content-Type: application/json"
+            body:
+                # match type can be 'loose|strict'
+                # loose: for object, rule matches if fields in value all all found in the incoming request body. strings are matched using regex.
+                # strict: for object, rule matches only if value and incoming request body are exact match. strings are matched using string equal.
+                match_rule: "loose"
+                value:
+                    jsonrpc: "2.0"
+                    id: 123
+                    method: "account_add_device"
+                    params:
+                        customer: "8de7e06e7590cf5b1eb6309cb6ce888c060d4a0217f22466b326c7e4408ff5d81b025e671d2e8e385ce54fb8849190b1"
+                        name: "my new device"
+                        type: "OTG"
+                        version: "2.0.1"
+        response:
+            status: 200
+            headers:
+                - "Content-Type: text/plain"
+            body:
+                object: "hello, world"
