@@ -36,7 +36,11 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 	responseRule := rule.Response
 
 	// status code
-	w.WriteHeader(responseRule.Status)
+	if responseRule.Status == 0 {
+		w.WriteHeader(200)
+	} else {
+		w.WriteHeader(responseRule.Status)
+	}
 
 	// header
 	for _, header := range responseRule.Headers {

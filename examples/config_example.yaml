@@ -10,13 +10,12 @@ rules:
             headers:
                 -   include: "Content-Type: application/json-rpc"
                 -   include: "Accept: application/json"
-                -   NOT: "Accept: text"
             method: "POST"
             body:
                 # match type can be 'loose|strict'
                 # loose: for object, rule matches if fields in value all all found in the incoming request body. strings are matched using regex.
                 # strict: for object, rule matches only if value and incoming request body are exact match. strings are matched using string equal.
-                match_rule: "loose"
+                match_rule: "strict"
                 value:
                     jsonrpc: "2.0"
                     id: 123
@@ -27,6 +26,7 @@ rules:
                         type: "OTG"
                         version: "2.0.1"
         response:
+            status: 200
             headers:
                 -   "Content-Type: application/json"
             body:
@@ -42,9 +42,6 @@ rules:
             path: "/file/download"
             method: "POST"
             body:
-                # match type can be 'loose|strict'
-                # loose: for object, rule matches if fields in value all all found in the incoming request body. strings are matched using regex.
-                # strict: for object, rule matches only if value and incoming request body are exact match. strings are matched using string equal.
                 match_rule: "loose"
                 value:
                     jsonrpc: "2.0"
