@@ -9,8 +9,8 @@ import (
 
 // Config represents the config of this application
 type Config struct {
-	Server ServerConfig
-	Rules  []Rule
+	Servers []ServerConfig
+	Rules   []Rule
 }
 
 // ServerConfig represents the config for the HTTP(S) server
@@ -83,10 +83,17 @@ func LoadConfigFromFile(configPath string) (*Config, error) {
 // PreprocessConfig verifies whether manditory fields exists in config object then
 // fills missing fields with default value.
 func PreprocessConfig(config *Config) error {
-	server := &config.Server
-	if (server.CertFile != "" && server.KeyFile == "") || (server.KeyFile != "" && server.CertFile == "") {
-		return fmt.Errorf("server.CertFile and server.KeyFile must come in pair")
+	if len(config.Servers) < 1 {
+		return fmt.Errorf("server count must be greater than 1")
 	}
+
+	for _, server := range config.Servers {
+		if (server.CertFile != "" && server.KeyFile == "") || (server.KeyFile != "" && server.CertFile == "") {
+			return fmt.Errorf("server.CertFile and server.KeyFile must come in pair")
+		}
+	}
+
+	// TODO @XG also validates rules
 
 	return nil
 }

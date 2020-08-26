@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 
 	"github.com/imafish/http-test-server/internal/common"
 )
@@ -31,14 +32,27 @@ func main() {
 		Rules: config.Rules,
 	}
 
-	server := config.Server
+	serverCount := len(config.Servers)
+	var wg sync.WaitGroup
+	wg.Add(serverCount)
+
+	for _, server := range config.Servers {
+		go serverFunc(server, handler, &wg)
+	}
+
+	wg.Wait()
+}
+
+func serverFunc(server common.ServerConfig, handler http.Handler, wg *sync.WaitGroup) {
+	defer wg.Done()
+
 	if server.KeyFile != "" {
 		log.Printf("HTTPs server listening on %s, key file: %s, cert file: %s", server.Addr, server.KeyFile, server.CertFile)
 		log.Fatal(http.ListenAndServeTLS(server.Addr, server.CertFile, server.KeyFile, handler))
 
 	} else {
-		log.Printf("HTTP server listening on %s", config.Server.Addr)
-		log.Fatal(http.ListenAndServe(config.Server.Addr, handler))
+		log.Printf("HTTP server listening on %s", server.Addr)
+		log.Fatal(http.ListenAndServe(server.Addr, handler))
 	}
 }
 
