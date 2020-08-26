@@ -93,13 +93,41 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 
 	} else if objBody != nil {
 		log.Printf("Creating response body using object")
-		bytes, err := json.Marshal(objBody)
+		jsonObj, err := convertToJSON(objBody)
+		if err != nil {
+			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to convert YAML object to JSON object, err: %s", err.Error()), w)
+		}
+		bytes, err := json.Marshal(jsonObj)
 		if err != nil {
 			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to marshal obj into json, err: %s", err.Error()), w)
 			return
 		}
 
 		w.Write(bytes)
+	}
+}
+
+func convertToJSON(objBody interface{}) (interface{}, error) {
+
+	switch b := objBody.(type) {
+	case map[interface{}]interface{}:
+		result := make(map[string]interface{})
+		for k, v := range b {
+			keyString, ok := k.(string)
+			if !ok {
+				return nil, fmt.Errorf("key of map object must of string ")
+			}
+
+			vConverted, err := convertToJSON(v)
+			if err != nil {
+				return nil, err
+			}
+			result[keyString] = vConverted
+		}
+		return result, nil
+
+	default:
+		return b, nil
 	}
 }
 
