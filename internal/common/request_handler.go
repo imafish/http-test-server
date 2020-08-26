@@ -38,21 +38,16 @@ func (rh *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func WriteResponse(rule *Rule, w http.ResponseWriter) {
 	responseRule := rule.Response
 
-	// status code
-	if responseRule.Status == 0 {
-		w.WriteHeader(200)
-	} else {
-		w.WriteHeader(responseRule.Status)
-	}
-
-	// header
+	// headers
 	for _, header := range responseRule.Headers {
 		splits := strings.Split(header, ":")
 		if len(splits) != 2 {
 			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("header string should contain exact 1 colon, actual: %s", header), w)
-			continue
+			return
 		}
-		w.Header()[strings.TrimSpace(splits[0])] = []string{strings.TrimSpace(splits[1])}
+		headerKey := strings.TrimSpace(splits[0])
+		headerValue := strings.TrimSpace(splits[1])
+		w.Header().Add(headerKey, headerValue)
 	}
 
 	// body
@@ -60,7 +55,8 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 	objBody := responseRule.Body
 	if filePath != "" {
 		log.Printf("Creating file response using: %s", filePath)
-		if _, err := os.Stat(filePath); err != nil {
+		stat, err := os.Stat(filePath)
+		if err != nil {
 			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to find file, err: %s", err.Error()), w)
 			return
 		}
@@ -72,8 +68,15 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 		}
 		defer inFile.Close()
 
+		// set headers and status code before write to body
+		filename := filepath.Base(filePath)
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
+		w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+		if responseRule.Status != 0 {
+			w.WriteHeader(responseRule.Status)
+		}
+
 		buf := make([]byte, 1024)
-		contentLength := 0
 		for {
 			n, err := inFile.Read(buf)
 			if err != nil && err != io.EOF {
@@ -84,12 +87,7 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 				break
 			}
 			w.Write(buf[:n])
-			contentLength += n
 		}
-
-		filename := filepath.Base(filePath)
-		w.Header()["Content-Disposition"] = []string{fmt.Sprintf("attachment; filename=\"%s\"", filename)}
-		w.Header()["Content-Length"] = []string{strconv.Itoa(contentLength)}
 
 	} else if objBody != nil {
 		log.Printf("Creating response body using object")
@@ -101,6 +99,11 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 		if err != nil {
 			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to marshal obj into json, err: %s", err.Error()), w)
 			return
+		}
+
+		// set status code before write to body
+		if responseRule.Status != 0 {
+			w.WriteHeader(responseRule.Status)
 		}
 
 		w.Write(bytes)
