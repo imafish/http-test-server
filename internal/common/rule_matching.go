@@ -144,6 +144,11 @@ func matchHeaders(headerRules []HeaderRule, requestHeader http.Header) (bool, er
 }
 
 func matchBody(bodyRule RequestBodyRule, requestBody io.ReadCloser) (bool, error) {
+
+	if bodyRule.Value == nil && bodyRule.MatchRule == "" {
+		return true, nil
+	}
+
 	matchRule := bodyRule.MatchRule
 	strict := false
 	if matchRule == "loose" {
