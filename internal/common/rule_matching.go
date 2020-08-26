@@ -10,8 +10,6 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
-
-	"github.com/google/go-cmp/cmp"
 )
 
 // FindMatchingRule returns the first matching rule from slices of rule
@@ -197,16 +195,15 @@ func matchString(expected string, actual string, strict bool) (bool, error) {
 }
 
 func matchObject(expected interface{}, actual interface{}, strict bool) (bool, error) {
-	if strict {
-		return cmp.Equal(expected, actual), nil
-	}
 
 	_, ok1 := expected.(map[interface{}]interface{})
 	_, ok2 := actual.(map[string]interface{})
 	_, ok3 := expected.(int)
 	_, ok4 := actual.(float64)
 	if (ok1 && ok2) || (ok3 && ok4) {
-		// type match;
+		// YAML parse 123 as int while JSON parse 123 as float64;
+		// YAML parse object as map[interface{}]interface{} while JSON parse object as map[string]interface{}
+		// So should treat the two above scenarios specially.
 	} else if reflect.TypeOf(expected) != reflect.TypeOf(actual) {
 		return false, nil
 	}
@@ -216,9 +213,14 @@ func matchObject(expected interface{}, actual interface{}, strict bool) (bool, e
 
 	switch e := expected.(type) {
 	case int:
-		a := actual.(float64)
-		intA := int(a)
-		equal = (intA == e)
+		aFloat, ok := actual.(float64)
+		var aInt int
+		if ok {
+			aInt = int(aFloat)
+		} else {
+			aInt = actual.(int)
+		}
+		equal = (aInt == e)
 
 	case float64:
 		a := actual.(float64)
@@ -237,7 +239,7 @@ func matchObject(expected interface{}, actual interface{}, strict bool) (bool, e
 		equal, err = matchSlice(e, a, strict)
 
 	default:
-		equal, err = false, fmt.Errorf("Unexpected type in json map object")
+		equal, err = false, fmt.Errorf("Unexpected type in YAML map object")
 	}
 
 	return equal, err
@@ -245,10 +247,14 @@ func matchObject(expected interface{}, actual interface{}, strict bool) (bool, e
 
 func matchMap(expected map[interface{}]interface{}, actual map[string]interface{}, strict bool) (bool, error) {
 
+	if strict && len(expected) != len(actual) {
+		return false, nil
+	}
+
 	for key, value := range expected {
 		keyString, ok := key.(string)
 		if !ok {
-			return false, fmt.Errorf("key in json map should be of type string")
+			return false, fmt.Errorf("key in YAML map should be of type string")
 		}
 
 		bodyValue, ok := actual[keyString]
