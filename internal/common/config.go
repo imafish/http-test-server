@@ -44,7 +44,8 @@ type RequestBodyRule struct {
 type ResponseRule struct {
 	Status  int
 	Headers []string
-	Body    ResponseBodyRule
+	File    string
+	Body    interface{}
 }
 
 // ResponseBodyRule represents the body of the HTTP response

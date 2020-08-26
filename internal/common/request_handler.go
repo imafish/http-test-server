@@ -53,15 +53,40 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 	}
 
 	// body
-	filePath := responseRule.Body.File
-	objBody := responseRule.Body.Object
+	filePath := responseRule.File
+	objBody := responseRule.Body
 	if filePath != "" {
 		log.Printf("Creating file response using: %s", filePath)
 		if _, err := os.Stat(filePath); err != nil {
 			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to find file, err: %s", err.Error()), w)
 			return
 		}
-		// TODO @XG generate file response
+
+		inFile, err := os.Open(filePath)
+		if err != nil {
+			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to open file, err: %s", err), w)
+			return
+		}
+		defer inFile.Close()
+
+		buf := make([]byte, 1024)
+		contentLength := 0
+		for {
+			n, err := inFile.Read(buf)
+			if err != nil && err != io.EOF {
+				ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to read file, err: %s", err.Error()), w)
+				return
+			}
+			if n == 0 || err == io.EOF {
+				break
+			}
+			w.Write(buf[:n])
+			contentLength += n
+		}
+
+		filename := filepath.Base(filePath)
+		w.Header()["Content-Disposition"] = []string{fmt.Sprintf("attachment; filename=\"%s\"", filename)}
+		w.Header()["Content-Length"] = []string{strconv.Itoa(contentLength)}
 
 	} else if objBody != nil {
 		bytes, err := json.Marshal(objBody)
