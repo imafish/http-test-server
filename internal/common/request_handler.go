@@ -5,9 +5,12 @@ package common
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -46,7 +49,7 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 	for _, header := range responseRule.Headers {
 		splits := strings.Split(header, ":")
 		if len(splits) != 2 {
-			log.Printf("header string should contain exact 1 colon, actual: %s", header)
+			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("header string should contain exact 1 colon, actual: %s", header), w)
 			continue
 		}
 		w.Header()[strings.TrimSpace(splits[0])] = []string{strings.TrimSpace(splits[1])}
@@ -89,6 +92,7 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 		w.Header()["Content-Length"] = []string{strconv.Itoa(contentLength)}
 
 	} else if objBody != nil {
+		log.Printf("Creating response body using object")
 		bytes, err := json.Marshal(objBody)
 		if err != nil {
 			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to marshal obj into json, err: %s", err.Error()), w)

@@ -20,6 +20,7 @@ func FindMatchingRule(rules []Rule, request *http.Request) (*Rule, error) {
 
 	for _, r := range rules {
 		requestRule := r.Request
+		log.Printf("RULE: path: %s, method %s\n", requestRule.Path, requestRule.Method)
 
 		match := (requestRule.Method == request.Method)
 		if !match {

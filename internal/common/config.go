@@ -34,6 +34,12 @@ type RequestRule struct {
 	Body    RequestBodyRule
 }
 
+// HeaderRule represents header rule
+type HeaderRule struct {
+	Include string
+	Not     string
+}
+
 // RequestBodyRule represents the matching rule for request body
 type RequestBodyRule struct {
 	MatchRule string `yaml:"match_rule"`
@@ -46,18 +52,6 @@ type ResponseRule struct {
 	Headers []string
 	File    string
 	Body    interface{}
-}
-
-// ResponseBodyRule represents the body of the HTTP response
-type ResponseBodyRule struct {
-	File   string
-	Object interface{}
-}
-
-// HeaderRule represents header rule
-type HeaderRule struct {
-	Include string
-	Not     string
 }
 
 // LoadConfigFromFile loads the config from a YAML file
