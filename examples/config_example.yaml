@@ -1,11 +1,12 @@
-server:
-    addr: ":8080"
-    cert_file:
-    key_file:
+servers:
+    -   addr: ":8080"
+    -   addr: ":8443"
+        cert_file: "../../examples/server.cer"
+        key_file: "../../examples/server-key.nopass.pem"
 
 rules:
-    -
-        request:
+    # Add new device (successful)
+    -   request:
             path: "/api"
             headers:
                 -   include: "Content-Type: application/json-rpc"
@@ -37,9 +38,94 @@ rules:
                     type: "OTG"
                     device: "4e98e18e-2f32-4538-a8df-0a626e46fd7c"
 
-    -
-        request:
-            path: "/file/download"
+    # Add new device with the invalid JSON query
+    -   request:
+            path: "/api"
+            headers:
+                -   include: "Content-Type: application/json-rpc"
+                -   include: "Accept: application/json"
+            method: "POST"
+            body:
+                match_rule: "strict"
+                value: '{"jsonrpc":"2.0","id":8889,"method":"account_add_device","params":{ "customer":"8de7e06e7590cf5b1eb6309cb6ce888c060d4a0217f22466b326c7e4408ff5d81b025e671d2e8e385ce54fb8849190b1", "name":"My new device", "type":"OTG" "version":"2.0.1"}}'
+        response:
+            status: 200
+            headers:
+                -   "Content-Type: application/json"
+            body:
+                jsonrpc: "2.0"
+                id: null
+                error:
+                    code: -32700
+                    message: "Parse error Invalid JSON was received by the server."
+                    data: "An error occurred on the server while parsing the JSON text."
+
+    # Add new device with the invalid RPC method
+    -   request:
+            path: "/api"
+            headers:
+                -   include: "Content-Type: application/json-rpc"
+                -   include: "Accept: application/json"
+            method: "POST"
+            body:
+                match_rule: "strict"
+                value:
+                    jsonrpc: "2.0"
+                    id: 123
+                    method: "account_add_devices"
+                    params:
+                        customer: "8de7e06e7590cf5b1eb6309cb6ce888c060d4a0217f22466b326c7e4408ff5d81b025e671d2e8e385ce54fb8849190b1"
+                        name: "my new device"
+                        type: "OTG"
+                        version: "2.0.1"
+        response:
+            status: 200
+            headers:
+                -   "Content-Type: application/json"
+            body:
+                jsonrpc: "2.0"
+                id: 123
+                error:
+                    code: -32601
+                    message: "Method not found."
+                    data: "The method (account_add_devices) does not exist or is not available."
+
+    # Add new device with the invalid customer key
+    -   request:
+            path: "/api"
+            headers:
+                -   include: "Content-Type: application/json-rpc"
+                -   include: "Accept: application/json"
+            method: "POST"
+            body:
+                match_rule: "strict"
+                value:
+                    jsonrpc: "2.0"
+                    id: 123
+                    method: "account_add_device"
+                    params:
+                        customer: "123"
+                        name: "my new device"
+                        type: "OTG"
+                        version: "2.0.1"
+        response:
+            status: 200
+            headers:
+                -   "Content-Type: application/json"
+            body:
+                jsonrpc: "2.0"
+                id: 123
+                error:
+                    code: 1
+                    message: "Unauthorized"
+                    data: " failed for a customer using key ..._INVALID_KEY (10.1.8.2)"
+
+    # Add new device with missing version field
+    -   request:
+            path: "/api"
+            headers:
+                -   include: "Content-Type: application/json-rpc"
+                -   include: "Accept: application/json"
             method: "POST"
             body:
                 match_rule: "loose"
@@ -51,14 +137,59 @@ rules:
                         customer: "8de7e06e7590cf5b1eb6309cb6ce888c060d4a0217f22466b326c7e4408ff5d81b025e671d2e8e385ce54fb8849190b1"
                         name: "my new device"
                         type: "OTG"
+        response:
+            status: 200
+            headers:
+                -   "Content-Type: application/json"
+            body:
+                jsonrpc: "2.0"
+                id: 123
+                error:
+                    code: 3
+                    message: "Execution Error"
+                    data: " some required arguments are missing  (10.1.8.2)"
+
+    # Add new device with the invalid device type
+    -   request:
+            path: "/api"
+            headers:
+                -   include: "Content-Type: application/json-rpc"
+                -   include: "Accept: application/json"
+            method: "POST"
+            body:
+                match_rule: "strict"
+                value:
+                    jsonrpc: "2.0"
+                    id: 123
+                    method: "account_add_device"
+                    params:
+                        customer: "8de7e06e7590cf5b1eb6309cb6ce888c060d4a0217f22466b326c7e4408ff5d81b025e671d2e8e385ce54fb8849190b1"
+                        name: "my new device"
+                        type: "KOF"
                         version: "2.0.1"
         response:
+            status: 200
             headers:
-                -   "Content-Type: stream"
-            file: "./resource/ca.cer"
+                -   "Content-Type: application/json"
+            body:
+                jsonrpc: "2.0"
+                id: 123
+                error:
+                    code: 3
+                    message: "Execution Error"
+                    data: "unable to register a device by [My new device|KOF|2.0.1]: Invalid device type. Must be one of: OTG, DNSP"
 
-    -
-        request:
+    # To download Root Certificate
+    -   request:
+            path: "/ssl/ca.der"
+            method: "GET"
+        response:
+            headers:
+                -   "Content-Type: application/x-x509-ca-cert"
+            file: "../../examples/ca.der"
+
+    # A test method.
+    -   request:
             path: "/test"
             method: "POST"
             headers:
@@ -81,5 +212,4 @@ rules:
             status: 200
             headers:
                 - "Content-Type: text/plain"
-            body:
-                object: "hello, world"
+            body: "hello, world"
