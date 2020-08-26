@@ -1,5 +1,8 @@
-- support for returning a file
+- ~~support for returning a file~~
+- ~~support HTTPs~~
+- ~~support multiple servers~~
 - support for assigning variables and use them in responses.
+- read YAML using strict strategy
 - update README
 - add tests
 - support for path param matching, e.g. /book/{id}/section{section_id}
