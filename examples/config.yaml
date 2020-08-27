@@ -1,0 +1,45 @@
+servers:
+    -   addr: ":8080"
+    -   addr: ":8081"
+        cert_file: "data/server.cer"
+        key_file: "data/server-key.nopass.pem"
+
+rules:
+    # A test method.
+    -   request:
+            path: "/test"
+            method: "POST"
+            headers:
+                -   include: "Content-Type: application/json"
+            body:
+                # match type can be 'loose|strict'
+                # loose: for object, rule matches if fields in value all all found in the incoming request body. strings are matched using regex.
+                # strict: for object, rule matches only if value and incoming request body are exact match. strings are matched using string equal.
+                match_rule: "loose"
+                value:
+                    id: '{{id,int}}'
+                    name: 'my name is {{name,string}}'
+                    params:
+                        size: total size is {{size,int}}
+                        version: '{{version,string}}'
+        response:
+            status: 200
+            headers:
+                - "Content-Type: text/plain"
+            body:
+                hello: world
+                id: '{{id}}'
+                data:
+                    name: '{{name}}'
+                    size: input size is {{size}}
+                    version: '{{version}}'
+
+    # request to download a file
+    -   request:
+            path: "/book"
+            method: "GET"
+        response:
+            headers:
+                -   "Content-Type: text/plain"
+            file: "../../examples/book.txt"
+            
