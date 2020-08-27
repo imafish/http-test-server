@@ -16,7 +16,7 @@ type stringRule struct {
 func (r *stringRule) Match(value interface{}, variables map[string]*Variable) (bool, map[string]*Variable, error) {
 	var str string
 
-	if r.singleMatch {
+	if r.singleMatch && (r.variables[0].vType == vtInt || r.variables[0].vType == vtFloat) {
 		f, ok := value.(float64)
 		if !ok {
 			return false, nil, nil
