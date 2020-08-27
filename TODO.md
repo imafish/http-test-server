@@ -1,9 +1,10 @@
 - ~~support for returning a file~~
 - ~~support HTTPs~~
 - ~~support multiple servers~~
-- ! support for assigning variables and use them in responses.
+- ~~! support for assigning variables and use them in responses.~~
+- support for path param matching, e.g. /book/{id}/section{section_id}
+- refactor so body rules are precompiled. (ongoing)
+- think about exported/private symbols
 - read YAML using strict strategy
 - update README
 - add tests
-- support for path param matching, e.g. /book/{id}/section{section_id}
-- (Optional) refactor: preprocess config should convert YAML object of int type to float64; map[interface{}]interface{} type to map[string]interface{}, so in rule_matching, simplier logic is required.

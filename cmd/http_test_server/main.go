@@ -2,12 +2,15 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"sync"
 
-	"github.com/imafish/http-test-server/internal/common"
+	"github.com/imafish/http-test-server/internal/config"
+	"github.com/imafish/http-test-server/internal/handler"
+	"github.com/imafish/http-test-server/internal/rules"
 )
 
 func main() {
@@ -18,18 +21,18 @@ func main() {
 		usage()
 	}
 
-	config, err := common.LoadConfigFromFile(*configPath)
+	config, err := config.LoadConfigFromFile(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to load config file, err: %s", err.Error())
 	}
 
-	err = common.PreprocessConfig(config)
+	compiledRules, err := preprocessConfig(config)
 	if err != nil {
 		log.Fatalf("Failed to verify config object, err: %s", err.Error())
 	}
 
-	handler := &common.RequestHandler{
-		Rules: config.Rules,
+	handler := &handler.RequestHandler{
+		Rules: compiledRules,
 	}
 
 	serverCount := len(config.Servers)
@@ -43,7 +46,7 @@ func main() {
 	wg.Wait()
 }
 
-func serverFunc(server common.ServerConfig, handler http.Handler, wg *sync.WaitGroup) {
+func serverFunc(server config.ServerConfig, handler http.Handler, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	if server.KeyFile != "" {
@@ -59,4 +62,31 @@ func serverFunc(server common.ServerConfig, handler http.Handler, wg *sync.WaitG
 func usage() {
 	flag.PrintDefaults()
 	os.Exit(1)
+}
+
+// preprocessConfig verifies whether manditory fields exists in config object then
+// fills missing fields with default value.
+// Also, it compiles plain Rule object into CompiledRule, complaining any error found during the process
+func preprocessConfig(config *config.Config) ([]*rules.CompiledRule, error) {
+	if len(config.Servers) < 1 {
+		return nil, fmt.Errorf("server count must be greater than 1")
+	}
+
+	for _, server := range config.Servers {
+		if (server.CertFile != "" && server.KeyFile == "") || (server.KeyFile != "" && server.CertFile == "") {
+			return nil, fmt.Errorf("server.CertFile and server.KeyFile must come in pair")
+		}
+	}
+
+	compiledRules := make([]*rules.CompiledRule, len(config.Rules))
+	for i, r := range config.Rules {
+		compiledRule, err := rules.CompileRule(r)
+		if err != nil {
+			return nil, err
+		}
+
+		compiledRules[i] = compiledRule
+	}
+
+	return compiledRules, nil
 }

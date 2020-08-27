@@ -1,4 +1,4 @@
-package common
+package rules
 
 import (
 	"encoding/json"
@@ -10,54 +10,57 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+
+	"github.com/imafish/http-test-server/internal/config"
 )
 
 // FindMatchingRule returns the first matching rule from slices of rule
-func FindMatchingRule(rules []Rule, request *http.Request) (*Rule, error) {
-	var matchedRule *Rule
+func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRule, map[string]*Variable, error) {
+	var matchedRule *CompiledRule
+	variables := make(map[string]*Variable)
 
 	for _, r := range rules {
 		requestRule := r.Request
-		log.Printf("RULE: path: %s, method %s\n", requestRule.Path, requestRule.Method)
+		log.Printf("RULE: path: %s, method %s\n", requestRule.path, requestRule.method)
 
-		match := (requestRule.Method == request.Method)
+		match := (requestRule.method == request.Method)
 		if !match {
-			log.Printf("method not match, expect: %s, got %s\n", requestRule.Method, request.Method)
+			log.Printf("method not match, expect: %s, got %s\n", requestRule.method, request.Method)
 			continue
 		}
 
-		match, err := matchPath(requestRule.Path, request.RequestURI)
+		match, err := matchPath(requestRule.path, request.RequestURI)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if !match {
-			log.Printf("path not match, expect: %s, got %s\n", requestRule.Path, request.RequestURI)
+			log.Printf("path not match, expect: %s, got %s\n", requestRule.path, request.RequestURI)
 			continue
 		}
 
-		match, err = matchHeaders(requestRule.Headers, request.Header)
+		match, err = matchHeaders(requestRule.headers, request.Header)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if !match {
 			log.Printf("header not match\n")
 			continue
 		}
 
-		match, err = matchBody(requestRule.Body, request.Body)
+		match, variables, err = matchBody(requestRule.body, request.Body)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if !match {
 			log.Printf("body not match")
 			continue
 		}
 
-		matchedRule = &r
+		matchedRule = r
 		break
 	}
 
-	return matchedRule, nil
+	return matchedRule, variables, nil
 }
 
 func matchPath(path string, requestPath string) (bool, error) {
@@ -75,6 +78,7 @@ func matchPath(path string, requestPath string) (bool, error) {
 	for i, rs := range ruleSplits {
 		regx, err := regexp.Compile(rs)
 		if err != nil {
+			// TODO @XG move this erro checking to rule compilation phase
 			return false, fmt.Errorf("Failed to compile regex from %s, err: %s", rs, err.Error())
 		}
 
@@ -88,7 +92,7 @@ func matchPath(path string, requestPath string) (bool, error) {
 	return true, nil
 }
 
-func matchHeaders(headerRules []HeaderRule, requestHeader http.Header) (bool, error) {
+func matchHeaders(headerRules []config.HeaderRule, requestHeader http.Header) (bool, error) {
 
 	requestHeaderStrings := make([]string, 0)
 	for k, v := range requestHeader {
@@ -142,46 +146,37 @@ func matchHeaders(headerRules []HeaderRule, requestHeader http.Header) (bool, er
 	return true, nil
 }
 
-func matchBody(bodyRule RequestBodyRule, requestBody io.ReadCloser) (bool, error) {
+func matchBody(bodyRule BodyRule, requestBody io.ReadCloser) (bool, map[string]*Variable, error) {
 
-	if bodyRule.Value == nil && bodyRule.MatchRule == "" {
-		return true, nil
+	if bodyRule == nil {
+		return true, nil, nil
 	}
 
-	matchRule := bodyRule.MatchRule
-	strict := false
-	if matchRule == "loose" {
-		strict = false
-	} else if matchRule == "strict" {
-		strict = true
-	} else {
-		return false, fmt.Errorf("bodyRule.MatchRule must be one of 'loose' and 'strict'")
-	}
+	// TODO @XG this variables should be passed in from method parameter, as matchPath also generates variables.
+	variables := make(map[string]*Variable)
 
-	matchValue := bodyRule.Value
 	bytes, err := ioutil.ReadAll(requestBody)
-	if err != nil {
-		return false, err
+	bodyObj := make(map[string]interface{})
+	err = json.Unmarshal(bytes, &bodyObj)
+	if err == nil {
+		return bodyRule.Match(bodyObj, variables)
 	}
-
-	switch e := matchValue.(type) {
-	case string:
-		return matchString(e, string(bytes), strict)
-
-	case map[interface{}]interface{}:
-		bodyObj := make(map[string]interface{})
-		err = json.Unmarshal(bytes, &bodyObj)
-		if err != nil {
-			return false, nil
-		}
-		return matchMap(e, bodyObj, strict)
-
-	default:
-		return false, fmt.Errorf("bodyRule.Value must be of type string or map[interface{}]interface{}")
+	bodySlice := make([]interface{}, 0)
+	err = json.Unmarshal(bytes, &bodySlice)
+	if err == nil {
+		return bodyRule.Match(bodySlice, variables)
 	}
+	var bodyNumber float64
+	err = json.Unmarshal(bytes, &bodyNumber)
+	if err == nil {
+		return bodyRule.Match(bodyNumber, variables)
+	}
+	return bodyRule.Match(string(bytes), variables)
 }
 
 func matchString(expected string, actual string, strict bool) (bool, error) {
+	// find all possible variable definitions in rule
+
 	if strict {
 		return actual == expected, nil
 	}

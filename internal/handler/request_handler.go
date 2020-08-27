@@ -1,6 +1,4 @@
-// Package common holds all internal types
-// just a convenient way to organize code
-package common
+package handler
 
 import (
 	"encoding/json"
@@ -10,39 +8,41 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/imafish/http-test-server/internal/rules"
 )
 
 // RequestHandler handles incoming requests
 type RequestHandler struct {
-	Rules []Rule
+	Rules []*rules.CompiledRule
 }
 
 func (rh *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	rule, err := FindMatchingRule(rh.Rules, r)
+	rule, variables, err := rules.FindMatchingRule(rh.Rules, r)
 
 	if err != nil {
-		ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("error in finding matching rule for this request, err: %s", err.Error()), w)
+		errorResponse(http.StatusInternalServerError, fmt.Sprintf("error in finding matching rule for this request, err: %s", err.Error()), w)
 		return
 	}
 
 	if rule == nil {
-		ErrorResponse(http.StatusNotFound, "no matching rule found for this request", w)
+		errorResponse(http.StatusNotFound, "no matching rule found for this request", w)
 	} else {
-		WriteResponse(rule, w)
+		writeResponse(rule, variables, w)
 	}
 }
 
-// WriteResponse writes http responses base on rule's response field
-func WriteResponse(rule *Rule, w http.ResponseWriter) {
+func writeResponse(rule *rules.CompiledRule, variables map[string]*rules.Variable, w http.ResponseWriter) {
 	responseRule := rule.Response
 
 	// headers
 	for _, header := range responseRule.Headers {
 		splits := strings.Split(header, ":")
 		if len(splits) != 2 {
-			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("header string should contain exact 1 colon, actual: %s", header), w)
+			errorResponse(http.StatusInternalServerError, fmt.Sprintf("header string should contain exact 1 colon, actual: %s", header), w)
 			return
 		}
 		headerKey := strings.TrimSpace(splits[0])
@@ -57,13 +57,13 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 		log.Printf("Creating file response using: %s", filePath)
 		stat, err := os.Stat(filePath)
 		if err != nil {
-			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to find file, err: %s", err.Error()), w)
+			errorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to find file, err: %s", err.Error()), w)
 			return
 		}
 
 		inFile, err := os.Open(filePath)
 		if err != nil {
-			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to open file, err: %s", err), w)
+			errorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to open file, err: %s", err), w)
 			return
 		}
 		defer inFile.Close()
@@ -80,7 +80,7 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 		for {
 			n, err := inFile.Read(buf)
 			if err != nil && err != io.EOF {
-				ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to read file, err: %s", err.Error()), w)
+				errorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to read file, err: %s", err.Error()), w)
 				return
 			}
 			if n == 0 || err == io.EOF {
@@ -91,13 +91,13 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 
 	} else if objBody != nil {
 		log.Printf("Creating response body using object")
-		jsonObj, err := convertToJSON(objBody)
+		jsonObj, err := convertToJSON(objBody, variables)
 		if err != nil {
-			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to convert YAML object to JSON object, err: %s", err.Error()), w)
+			errorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to convert YAML object to JSON object, err: %s", err.Error()), w)
 		}
 		bytes, err := json.Marshal(jsonObj)
 		if err != nil {
-			ErrorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to marshal obj into json, err: %s", err.Error()), w)
+			errorResponse(http.StatusInternalServerError, fmt.Sprintf("Failed to marshal obj into json, err: %s", err.Error()), w)
 			return
 		}
 
@@ -110,7 +110,7 @@ func WriteResponse(rule *Rule, w http.ResponseWriter) {
 	}
 }
 
-func convertToJSON(objBody interface{}) (interface{}, error) {
+func convertToJSON(objBody interface{}, variables map[string]*rules.Variable) (interface{}, error) {
 
 	switch b := objBody.(type) {
 	case map[interface{}]interface{}:
@@ -121,7 +121,7 @@ func convertToJSON(objBody interface{}) (interface{}, error) {
 				return nil, fmt.Errorf("key of map object must of string ")
 			}
 
-			vConverted, err := convertToJSON(v)
+			vConverted, err := convertToJSON(v, variables)
 			if err != nil {
 				return nil, err
 			}
@@ -129,13 +129,40 @@ func convertToJSON(objBody interface{}) (interface{}, error) {
 		}
 		return result, nil
 
+	case string:
+		regex := regexp.MustCompile(`^{{(\w+)}}$`)
+		matches := regex.FindStringSubmatch(b)
+		if matches != nil {
+			// single match
+			v := variables[matches[1]]
+			if v == nil {
+				return nil, nil
+			}
+			return v.GetValue()
+		}
+
+		for k, v := range variables {
+			regex, err := regexp.Compile("{{" + k + "}}")
+			if err != nil {
+				return nil, err
+			}
+
+			value, err := v.GetValue()
+			if err != nil {
+				return nil, err
+			}
+			b = regex.ReplaceAllString(b, fmt.Sprint(value))
+		}
+
+		return b, nil
+
 	default:
 		return b, nil
 	}
 }
 
-// ErrorResponse reponses 500 status code, and body as errorMsg
-func ErrorResponse(statusCode int, errorMsg string, w http.ResponseWriter) {
+// errorResponse reponses 500 status code, and body as errorMsg
+func errorResponse(statusCode int, errorMsg string, w http.ResponseWriter) {
 	log.Println(errorMsg)
 	w.WriteHeader(statusCode)
 	w.Write([]byte(errorMsg))

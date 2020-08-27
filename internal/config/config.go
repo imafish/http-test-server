@@ -1,7 +1,6 @@
-package common
+package config
 
 import (
-	"fmt"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -72,22 +71,4 @@ func LoadConfigFromFile(configPath string) (*Config, error) {
 	}
 
 	return &config, nil
-}
-
-// PreprocessConfig verifies whether manditory fields exists in config object then
-// fills missing fields with default value.
-func PreprocessConfig(config *Config) error {
-	if len(config.Servers) < 1 {
-		return fmt.Errorf("server count must be greater than 1")
-	}
-
-	for _, server := range config.Servers {
-		if (server.CertFile != "" && server.KeyFile == "") || (server.KeyFile != "" && server.CertFile == "") {
-			return fmt.Errorf("server.CertFile and server.KeyFile must come in pair")
-		}
-	}
-
-	// TODO @XG also validates rules
-
-	return nil
 }
