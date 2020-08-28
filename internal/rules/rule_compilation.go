@@ -24,6 +24,7 @@ func CompileRule(rule config.Rule) (*CompiledRule, error) {
 			body:    bodyRule,
 		},
 		Response: rule.Response,
+		Name:     rule.Name,
 	}
 
 	return compiled, nil

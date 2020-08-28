@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -21,11 +20,9 @@ func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRu
 
 	for _, r := range rules {
 		requestRule := r.Request
-		log.Printf("RULE: path: %s, method %s\n", requestRule.path, requestRule.method)
 
 		match := (requestRule.method == request.Method)
 		if !match {
-			log.Printf("method not match, expect: %s, got %s\n", requestRule.method, request.Method)
 			continue
 		}
 
@@ -34,7 +31,6 @@ func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRu
 			return nil, nil, err
 		}
 		if !match {
-			log.Printf("path not match, expect: %s, got %s\n", requestRule.path, request.RequestURI)
 			continue
 		}
 
@@ -43,7 +39,6 @@ func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRu
 			return nil, nil, err
 		}
 		if !match {
-			log.Printf("header not match\n")
 			continue
 		}
 
@@ -52,7 +47,6 @@ func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRu
 			return nil, nil, err
 		}
 		if !match {
-			log.Printf("body not match")
 			continue
 		}
 

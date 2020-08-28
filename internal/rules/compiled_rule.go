@@ -7,6 +7,7 @@ import "github.com/imafish/http-test-server/internal/config"
 type CompiledRule struct {
 	Request  CompiledRequestRule
 	Response config.ResponseRule
+	Name     string
 }
 
 // CompiledRequestRule is the compiled version of comfig.RequestRulle

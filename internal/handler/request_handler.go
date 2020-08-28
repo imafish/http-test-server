@@ -21,6 +21,7 @@ type RequestHandler struct {
 }
 
 func (rh *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Incoming request: %s", r.RequestURI)
 	rule, variables, err := rules.FindMatchingRule(rh.Rules, r)
 
 	if err != nil {
@@ -31,6 +32,7 @@ func (rh *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if rule == nil {
 		errorResponse(http.StatusNotFound, "no matching rule found for this request", w)
 	} else {
+		log.Printf("Found rule '%s'", rule.Name)
 		writeResponse(rule, variables, w)
 	}
 }

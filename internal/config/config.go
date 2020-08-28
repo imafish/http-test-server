@@ -21,6 +21,7 @@ type ServerConfig struct {
 
 // Rule represents a rule
 type Rule struct {
+	Name     string `yaml:",omitempty"`
 	Request  RequestRule
 	Response ResponseRule
 }
