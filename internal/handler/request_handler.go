@@ -131,6 +131,17 @@ func convertToJSON(objBody interface{}, variables map[string]*rules.Variable) (i
 		}
 		return result, nil
 
+	case []interface{}:
+		result := make([]interface{}, 0, len(b))
+		for _, v := range b {
+			vConverted, err := convertToJSON(v, variables)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, vConverted)
+		}
+		return result, nil
+
 	case string:
 		regex := regexp.MustCompile(`^{{(\w+)}}$`)
 		matches := regex.FindStringSubmatch(b)
