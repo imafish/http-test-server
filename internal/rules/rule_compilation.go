@@ -66,6 +66,12 @@ func compileObject(value interface{}, strict bool, variableNames map[string]bool
 		}
 		return compiled, nil
 
+	case bool:
+		compiled := &booleanRule{
+			expected: e,
+		}
+		return compiled, nil
+
 	case map[interface{}]interface{}:
 		return compileMap(e, strict, variableNames)
 
