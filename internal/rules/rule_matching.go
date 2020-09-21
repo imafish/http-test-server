@@ -3,7 +3,6 @@ package rules
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -17,6 +16,11 @@ import (
 func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRule, map[string]*Variable, error) {
 	var matchedRule *CompiledRule
 	variables := make(map[string]*Variable)
+
+	bytes, err := ioutil.ReadAll(request.Body)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	for _, r := range rules {
 		requestRule := r.Request
@@ -42,7 +46,7 @@ func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRu
 			continue
 		}
 
-		match, variables, err = matchBody(requestRule.body, request.Body)
+		match, variables, err = matchBody(requestRule.body, bytes)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -140,7 +144,7 @@ func matchHeaders(headerRules []config.HeaderRule, requestHeader http.Header) (b
 	return true, nil
 }
 
-func matchBody(bodyRule BodyRule, requestBody io.ReadCloser) (bool, map[string]*Variable, error) {
+func matchBody(bodyRule BodyRule, bytes []byte) (bool, map[string]*Variable, error) {
 
 	if bodyRule == nil {
 		return true, nil, nil
@@ -149,9 +153,8 @@ func matchBody(bodyRule BodyRule, requestBody io.ReadCloser) (bool, map[string]*
 	// TODO @XG this variables should be passed in from method parameter, as matchPath also generates variables.
 	variables := make(map[string]*Variable)
 
-	bytes, err := ioutil.ReadAll(requestBody)
 	bodyObj := make(map[string]interface{})
-	err = json.Unmarshal(bytes, &bodyObj)
+	err := json.Unmarshal(bytes, &bodyObj)
 	if err == nil {
 		return bodyRule.Match(bodyObj, variables)
 	}
