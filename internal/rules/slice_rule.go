@@ -8,11 +8,11 @@ func (r *sliceRule) Match(value interface{}, variables map[string]*Variable) (bo
 
 	sliceValue, ok := value.([]interface{})
 	if !ok {
-		return false, nil, nil
+		return false, variables, nil
 	}
 
 	if len(sliceValue) != len(r.subRules) {
-		return false, nil, nil
+		return false, variables, nil
 	}
 
 	for i, ss := range sliceValue {
@@ -25,7 +25,7 @@ func (r *sliceRule) Match(value interface{}, variables map[string]*Variable) (bo
 			return false, nil, err
 		}
 		if !isMatch {
-			return false, nil, nil
+			return false, variables, nil
 		}
 	}
 

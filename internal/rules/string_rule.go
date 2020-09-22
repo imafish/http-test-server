@@ -19,21 +19,21 @@ func (r *stringRule) Match(value interface{}, variables map[string]*Variable) (b
 	if r.singleMatch && (r.variables[0].vType == vtInt || r.variables[0].vType == vtFloat) {
 		f, ok := value.(float64)
 		if !ok {
-			return false, nil, nil
+			return false, variables, nil
 		}
 		str = fmt.Sprintf("%f", f)
 		str = strings.TrimRight(str, ".0")
 	} else {
 		s, ok := value.(string)
 		if !ok {
-			return false, nil, nil
+			return false, variables, nil
 		}
 		str = s
 	}
 
 	matches := r.regex.FindAllStringSubmatch(str, -1)
 	if matches == nil {
-		return false, nil, nil
+		return false, variables, nil
 	}
 
 	// only process the first match

@@ -8,17 +8,17 @@ type mapRule struct {
 func (r *mapRule) Match(value interface{}, variables map[string]*Variable) (bool, map[string]*Variable, error) {
 	valueMap, ok := value.(map[string]interface{})
 	if !ok {
-		return false, nil, nil
+		return false, variables, nil
 	}
 
 	if r.strict && len(valueMap) != len(r.subRules) {
-		return false, nil, nil
+		return false, variables, nil
 	}
 
 	for k, v := range valueMap {
 		subRule := r.subRules[k]
 		if subRule == nil {
-			return false, nil, nil
+			return false, variables, nil
 		}
 
 		var isMatch bool
@@ -28,7 +28,7 @@ func (r *mapRule) Match(value interface{}, variables map[string]*Variable) (bool
 			return false, nil, err
 		}
 		if !isMatch {
-			return false, nil, nil
+			return false, variables, nil
 		}
 	}
 

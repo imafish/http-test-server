@@ -7,7 +7,7 @@ type booleanRule struct {
 func (r *booleanRule) Match(value interface{}, variables map[string]*Variable) (bool, map[string]*Variable, error) {
 	actual, ok := value.(bool)
 	if !ok {
-		return false, nil, nil
+		return false, variables, nil
 	}
 
 	return r.expected == actual, variables, nil
