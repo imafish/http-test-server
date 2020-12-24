@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -21,7 +23,14 @@ type RequestHandler struct {
 }
 
 func (rh *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("\n------- ------- -------")
 	log.Printf("Incoming request: %s", r.RequestURI)
+	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	r.Body.Close()
+	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	log.Printf("Incoming request body: %s", string(bodyBytes))
+
 	rule, variables, err := rules.FindMatchingRule(rh.Rules, r)
 
 	if err != nil {
