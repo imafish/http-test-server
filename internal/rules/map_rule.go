@@ -11,8 +11,10 @@ func (r *mapRule) Match(value interface{}, variables map[string]*Variable) (bool
 		return false, variables, nil
 	}
 
-	if r.strict && len(valueMap) != len(r.subRules) {
-		return false, variables, nil
+	ruleTracking := make(map[string]bool)
+	for k, v := range r.subRules {
+		_, ok := v.(*anyRule)
+		ruleTracking[k] = ok
 	}
 
 	for k, v := range valueMap {
@@ -20,6 +22,7 @@ func (r *mapRule) Match(value interface{}, variables map[string]*Variable) (bool
 		if subRule == nil {
 			return false, variables, nil
 		}
+		ruleTracking[k] = true
 
 		var isMatch bool
 		var err error
@@ -29,6 +32,14 @@ func (r *mapRule) Match(value interface{}, variables map[string]*Variable) (bool
 		}
 		if !isMatch {
 			return false, variables, nil
+		}
+	}
+
+	if r.strict {
+		for _, v := range ruleTracking {
+			if !v {
+				return false, variables, nil
+			}
 		}
 	}
 
