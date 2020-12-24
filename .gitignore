@@ -16,3 +16,8 @@
 
 # Visual Studio code launch settings
 .vscode/launch.json
+
+
+data/
+http-test-server
+http-test-server.exe
