@@ -10,7 +10,7 @@ type CompiledRule struct {
 	Name     string
 }
 
-// CompiledRequestRule is the compiled version of comfig.RequestRulle
+// CompiledRequestRule is the compiled version of config.RequestRule
 // Errors are caught and thrown during compilation.
 type CompiledRequestRule struct {
 	path    string

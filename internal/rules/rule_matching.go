@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -158,123 +157,18 @@ func matchBody(bodyRule BodyRule, bytes []byte) (bool, map[string]*Variable, err
 	if err == nil {
 		return bodyRule.Match(bodyObj, variables)
 	}
+
 	bodySlice := make([]interface{}, 0)
 	err = json.Unmarshal(bytes, &bodySlice)
 	if err == nil {
 		return bodyRule.Match(bodySlice, variables)
 	}
+
 	var bodyNumber float64
 	err = json.Unmarshal(bytes, &bodyNumber)
 	if err == nil {
 		return bodyRule.Match(bodyNumber, variables)
 	}
+
 	return bodyRule.Match(string(bytes), variables)
-}
-
-func matchString(expected string, actual string, strict bool) (bool, error) {
-	// find all possible variable definitions in rule
-
-	if strict {
-		return actual == expected, nil
-	}
-
-	regex, err := regexp.Compile(expected)
-	if err != nil {
-		err = fmt.Errorf("Failed to compile regex from rule, err: %s", err.Error())
-		return false, err
-	}
-	return regex.MatchString(actual), nil
-}
-
-func matchObject(expected interface{}, actual interface{}, strict bool) (bool, error) {
-
-	_, ok1 := expected.(map[interface{}]interface{})
-	_, ok2 := actual.(map[string]interface{})
-	_, ok3 := expected.(int)
-	_, ok4 := actual.(float64)
-	if (ok1 && ok2) || (ok3 && ok4) {
-		// YAML parse 123 as int while JSON parse 123 as float64;
-		// YAML parse object as map[interface{}]interface{} while JSON parse object as map[string]interface{}
-		// So should treat the two above scenarios specially.
-	} else if reflect.TypeOf(expected) != reflect.TypeOf(actual) {
-		return false, nil
-	}
-
-	var equal bool
-	var err error
-
-	switch e := expected.(type) {
-	case int:
-		aFloat, ok := actual.(float64)
-		var aInt int
-		if ok {
-			aInt = int(aFloat)
-		} else {
-			aInt = actual.(int)
-		}
-		equal = (aInt == e)
-
-	case float64:
-		a := actual.(float64)
-		equal = (a == e)
-
-	case string:
-		a := actual.(string)
-		equal, err = matchString(e, a, strict)
-
-	case map[interface{}]interface{}:
-		a := actual.(map[string]interface{})
-		equal, err = matchMap(e, a, strict)
-
-	case []interface{}:
-		a := actual.([]interface{})
-		equal, err = matchSlice(e, a, strict)
-
-	default:
-		equal, err = false, fmt.Errorf("Unexpected type in YAML map object")
-	}
-
-	return equal, err
-}
-
-func matchMap(expected map[interface{}]interface{}, actual map[string]interface{}, strict bool) (bool, error) {
-
-	if strict && len(expected) != len(actual) {
-		return false, nil
-	}
-
-	for key, value := range expected {
-		keyString, ok := key.(string)
-		if !ok {
-			return false, fmt.Errorf("key in YAML map should be of type string")
-		}
-
-		bodyValue, ok := actual[keyString]
-		if !ok {
-			return false, nil
-		}
-
-		equal, err := matchObject(value, bodyValue, strict)
-		if !equal || err != nil {
-			return equal, err
-		}
-	}
-
-	return true, nil
-}
-
-func matchSlice(expected, actual []interface{}, strict bool) (bool, error) {
-	if len(expected) != len(actual) {
-		return false, nil
-	}
-
-	for i, e := range expected {
-		a := actual[i]
-		equal, err := matchObject(e, a, strict)
-		if !equal || err != nil {
-			return equal, err
-		}
-	}
-
-	return true, nil
 }

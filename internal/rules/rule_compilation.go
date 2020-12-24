@@ -41,7 +41,7 @@ func compileBodyRule(bodyRule config.RequestBodyRule) (BodyRule, error) {
 	} else if bodyRule.MatchRule == "strict" {
 		strict = true
 	} else {
-		return nil, fmt.Errorf("bodyRulecompiledRule.MatchRule must be one of 'loose' and 'strict'")
+		return nil, fmt.Errorf("bodyRule.compiledRule.MatchRule must be one of 'loose' and 'strict'")
 	}
 
 	variableNames := make(map[string]bool)
