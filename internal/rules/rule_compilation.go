@@ -133,6 +133,10 @@ var matchVariableRegex = regexp.MustCompile(`{{(\w+),(\w+)}}`)
 
 func compileStringRule(rule string, strict bool, variableNames map[string]bool) (BodyRule, error) {
 
+	if rule == "{{ANY}}" {
+		return &anyRule{}, nil
+	}
+
 	matches := matchVariableRegex.FindAllStringSubmatchIndex(rule, -1)
 	startIndex := 0
 	extractedVariables := make([]*Variable, len(matches))
