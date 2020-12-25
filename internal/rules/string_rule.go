@@ -2,9 +2,9 @@ package rules
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 type stringRule struct {
@@ -21,8 +21,16 @@ func (r *stringRule) Match(value interface{}, variables map[string]*Variable) (b
 		if !ok {
 			return false, variables, nil
 		}
-		str = fmt.Sprintf("%f", f)
-		str = strings.TrimRight(str, ".0")
+
+		if r.variables[0].vType == vtInt {
+			if math.Round(f) != f {
+				return false, variables, nil
+			}
+			str = fmt.Sprintf("%.0f", f)
+		} else {
+			// float
+			str = fmt.Sprintf("%f", f)
+		}
 	} else {
 		s, ok := value.(string)
 		if !ok {
