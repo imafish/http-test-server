@@ -6,7 +6,8 @@ servers:
 
 rules:
     # A test method.
-    -   request:
+    -   name: a test method
+        request:
             path: "/test"
             method: "POST"
             headers:
