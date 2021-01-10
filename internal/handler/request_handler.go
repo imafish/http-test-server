@@ -13,13 +13,15 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/imafish/http-test-server/internal/rules"
 )
 
 // RequestHandler handles incoming requests
 type RequestHandler struct {
-	Rules []*rules.CompiledRule
+	Rules *[]*rules.CompiledRule
+	Mtx   *sync.Mutex
 }
 
 func (rh *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -31,13 +33,14 @@ func (rh *RequestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
 	log.Printf("Incoming request body: %s", string(bodyBytes))
 
-	rule, variables, err := rules.FindMatchingRule(rh.Rules, r)
+	rh.Mtx.Lock()
+	defer rh.Mtx.Unlock()
 
+	rule, variables, err := rules.FindMatchingRule(rh.Rules, r)
 	if err != nil {
 		errorResponse(http.StatusInternalServerError, fmt.Sprintf("error in finding matching rule for this request, err: %s", err.Error()), w)
 		return
 	}
-
 	if rule == nil {
 		errorResponse(http.StatusNotFound, "no matching rule found for this request", w)
 	} else {

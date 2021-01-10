@@ -12,7 +12,7 @@ import (
 )
 
 // FindMatchingRule returns the first matching rule from slices of rule
-func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRule, map[string]*Variable, error) {
+func FindMatchingRule(rules *[]*CompiledRule, request *http.Request) (*CompiledRule, map[string]*Variable, error) {
 	var matchedRule *CompiledRule
 	variables := make(map[string]*Variable)
 
@@ -21,7 +21,7 @@ func FindMatchingRule(rules []*CompiledRule, request *http.Request) (*CompiledRu
 		return nil, nil, err
 	}
 
-	for _, r := range rules {
+	for _, r := range *rules {
 		requestRule := r.Request
 
 		match := (requestRule.method == request.Method)
